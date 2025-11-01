@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tailwind 打地鼠遊戲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 自訂樣式，用來設定背景圖片 */
+        body {
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .hole {
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+            overflow: hidden;
+            /* 隱藏超出洞口的地鼠部分 */
+        }
+
+        .mole {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            /* 預設藏在洞裡 */
+            transition: all 0.3s ease-in-out;
+            /* 地鼠出現的動畫效果 */
+            cursor: pointer;
+            width: 80%;
+            /* 地鼠圖片佔洞口的寬度 */
+        }
+
+        .mole.up {
+            transform: translateX(-50%) translateY(0);
+            /* 地鼠出現的位置 */
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen transition-all duration-500">
+
+    <div class="container mx-auto p-8 bg-amber-950 bg-opacity-40 rounded-lg shadow-2xl text-white max-w-4xl">
+        <header class="flex justify-between items-center mb-6 border-b-2 pb-4">
+            <h1 class="text-4xl font-bold">🔨 打地鼠遊戲 🐹</h1>
+            <div class="flex space-x-8 text-2xl">
+                <h2>分數: <span id="score" class="font-mono">0</span></h2>
+                <h2>時間: <span id="time-left" class="font-mono">30</span>s</h2>
+            </div>
+        </header>
+
+        <main>
+            <div id="game-board" class="grid place-items-center gap-4 mb-6">
+            </div>
+        </main>
+
+        <footer class="flex justify-center space-x-4">
+            <button id="start-btn"
+                class="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-xl transition-transform transform hover:scale-105">
+                開始遊戲
+            </button>
+            <button id="stop-btn"
+                class="bg-red-500 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg text-xl transition-transform transform hover:scale-105 hidden">
+                結束遊戲
+            </button>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
