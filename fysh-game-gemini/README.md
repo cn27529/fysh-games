@@ -32,7 +32,7 @@
 
 我們將這次的協作經驗製作成一支分享影片，展現 Gemini 如何成為我們最強的學習隊友。
 
-[![YouTube影片縮圖](https://img.youtube.com/vi/YOUR_YOUTUBE_VIDEO_ID/0.jpg)](https://www.youtube.com/embed/AZ7Z1t5U1F0)
+[![YouTube影片縮圖](https://img.youtube.com/vi/AZ7Z1t5U1F0/0.jpg)](https://www.youtube.com/embed/AZ7Z1t5U1F0)
 
 ---
 
