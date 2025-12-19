@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>祝贺卡片设计工具</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #d63384, #9c27b0);
+            color: white;
+            padding: 22px 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: flex;
+            min-height: 700px;
+        }
+        
+        /* 左侧卡片区域 */
+        .card-preview {
+            flex: 1;
+            background-color: #fff9f9;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #eee;
+        }
+        
+        .card-container {
+            flex: 1;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f8f0e3"/><path d="M0,20 L100,20 M0,40 L100,40 M0,60 L100,60 M0,80 L100,80 M20,0 L20,100 M40,0 L40,100 M60,0 L60,100 M80,0 L80,100" stroke="%23e6d8c3" stroke-width="0.5"/></svg>');
+            background-color: #f8f0e3;
+            border-radius: 8px;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #e6d8c3;
+        }
+        
+        .card-bg {
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><rect width="400" height="600" fill="%23f8f0e3"/><path d="M0,300 L400,300" stroke="%23d63384" stroke-width="2" stroke-dasharray="10,5"/><path d="M200,0 L200,600" stroke="%23d63384" stroke-width="2" stroke-dasharray="10,5"/><circle cx="200" cy="300" r="150" fill="none" stroke="%23e6d8c3" stroke-width="1"/></svg>');
+            background-size: cover;
+            position: relative;
+        }
+        
+        .drop-zone {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        
+        .dropped-item {
+            position: absolute;
+            padding: 12px 18px;
+            background-color: rgba(255, 255, 255, 0.85);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(214, 51, 132, 0.3);
+            max-width: 200px;
+            cursor: move;
+            transition: box-shadow 0.2s;
+            z-index: 10;
+        }
+        
+        .dropped-item:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+        }
+        
+        .dropped-item.selected {
+            border: 2px solid #d63384;
+            box-shadow: 0 0 0 3px rgba(214, 51, 132, 0.2);
+        }
+        
+        .item-content {
+            font-size: 1.1rem;
+            color: #333;
+            word-break: break-word;
+        }
+        
+        .item-type {
+            font-size: 0.75rem;
+            color: #d63384;
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+        
+        .delete-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 12px;
+            cursor: pointer;
+            display: none;
+            z-index: 101;
+        }
+        
+        .dropped-item:hover .delete-btn {
+            display: block;
+        }
+        
+        /* 右侧数据区域 */
+        .card-data {
+            width: 400px;
+            padding: 25px;
+            background-color: #f9f9f9;
+            overflow-y: auto;
+        }
+        
+        .section-title {
+            font-size: 1.3rem;
+            color: #d63384;
+            margin-bottom: 18px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #eee;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title i {
+            margin-right: 10px;
+        }
+        
+        .data-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eee;
+            cursor: grab;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .data-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border-color: #d63384;
+        }
+        
+        .data-item:active {
+            cursor: grabbing;
+        }
+        
+        .data-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .data-value {
+            font-size: 1.1rem;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .blessings-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .blessing-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eee;
+            cursor: grab;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .blessing-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border-color: #9c27b0;
+        }
+        
+        .blessing-item:active {
+            cursor: grabbing;
+        }
+        
+        .blessing-text {
+            font-size: 1.05rem;
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        /* 按钮区域 */
+        .actions {
+            padding: 25px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            border-top: 1px solid #eee;
+            background-color: #f9f9f9;
+        }
+        
+        .btn {
+            padding: 14px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+        
+        .btn-save {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .btn-save:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+        
+        .btn-print {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-print:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+        
+        .btn-reset {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn-reset:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+        }
+        
+        .instructions {
+            background-color: #e7f3ff;
+            border-radius: 8px;
+            padding: 18px;
+            margin-top: 25px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .instructions h3 {
+            color: #007bff;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        
+        .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #aaa;
+            z-index: 0;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        
+        .empty-state p {
+            font-size: 1.2rem;
+        }
+        
+        @media (max-width: 1200px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .card-data {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-gift"></i> 祝贺卡片设计工具</h1>
+            <p class="subtitle">拖拽右侧祝贺词到左侧卡片区域，创建个性化祝贺卡片</p>
+        </header>
+        
+        <div class="main-content">
+            <!-- 左侧卡片预览区域 -->
+            <section class="card-preview">
+                <h2 class="section-title"><i class="fas fa-palette"></i> 卡片预览区</h2>
+                <div class="card-container">
+                    <div class="card-bg" id="cardBg">
+                        <div class="drop-zone" id="dropZone"></div>
+                        <div class="empty-state" id="emptyState">
+                            <i class="fas fa-arrow-alt-circle-left"></i>
+                            <p>从右侧拖拽祝贺词到这里</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 右侧数据区域 -->
+            <section class="card-data">
+                <h2 class="section-title"><i class="fas fa-database"></i> 卡片数据区</h2>
+                
+                <div class="data-section">
+                    <h3 class="section-title"><i class="fas fa-user"></i> 基本信息</h3>
+                    <div class="data-item" draggable="true" data-type="name">
+                        <div class="data-label">姓名</div>
+                        <div class="data-value">張三</div>
+                    </div>
+                    
+                    <div class="data-item" draggable="true" data-type="nickname">
+                        <div class="data-label">暱稱</div>
+                        <div class="data-value">小張</div>
+                    </div>
+                </div>
+                
+                <div class="data-section">
+                    <h3 class="section-title"><i class="fas fa-comment-dots"></i> 祝賀詞</h3>
+                    <div class="blessings-list">
+                        <div class="blessing-item" draggable="true" data-type="blessing">
+                            <div class="blessing-text">祝你生日快樂，願你天天開心，事事順利！</div>
+                        </div>
+                        
+                        <div class="blessing-item" draggable="true" data-type="blessing">
+                            <div class="blessing-text">恭賀新禧，萬事如意，心想事成！</div>
+                        </div>
+                        
+                        <div class="blessing-item" draggable="true" data-type="blessing">
+                            <div class="blessing-text">祝福您身體健康，家庭幸福美滿！</div>
+                        </div>
+                        
+                        <div class="blessing-item" draggable="true" data-type="blessing">
+                            <div class="blessing-text">前程似錦，步步高升，事業有成！</div>
+                        </div>
+                        
+                        <div class="blessing-item" draggable="true" data-type="blessing">
+                            <div class="blessing-text">願幸福與你相伴，快樂永遠跟隨！</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="instructions">
+                    <h3><i class="fas fa-info-circle"></i> 使用说明</h3>
+                    <ul>
+                        <li>从右侧拖拽任意数据到左侧卡片区域</li>
+                        <li>在卡片区域内拖拽元素可以调整位置</li>
+                        <li>鼠标悬停在元素上，点击右上角删除按钮可以移除</li>
+                        <li>点击"立即保存"保存当前设计</li>
+                        <li>点击"列印"下载卡片图片</li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+        
+        <!-- 按钮区域 -->
+        <div class="actions">
+            <button class="btn btn-save" id="saveBtn">
+                <i class="fas fa-save"></i> 立即保存
+            </button>
+            <button class="btn btn-print" id="printBtn">
+                <i class="fas fa-print"></i> 列印/下载图片
+            </button>
+            <button class="btn btn-reset" id="resetBtn">
+                <i class="fas fa-redo"></i> 重置设计
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 卡片设计状态
+            let cardDesign = {
+                items: [],
+                background: 'default',
+                lastUpdated: null
+            };
+            
+            // 从本地存储加载之前保存的设计
+            loadSavedDesign();
+            
+            // 获取DOM元素
+            const dropZone = document.getElementById('dropZone');
+            const emptyState = document.getElementById('emptyState');
+            const saveBtn = document.getElementById('saveBtn');
+            const printBtn = document.getElementById('printBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const draggableItems = document.querySelectorAll('[draggable="true"]');
+            
+            // 当前被拖拽的元素
+            let draggedItem = null;
+            let currentDraggedElement = null;
+            
+            // 为可拖拽元素添加事件监听器
+            draggableItems.forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+            });
+            
+            // 放置区域事件监听器
+            dropZone.addEventListener('dragover', handleDragOver);
+            dropZone.addEventListener('drop', handleDrop);
+            dropZone.addEventListener('dragenter', handleDragEnter);
+            dropZone.addEventListener('dragleave', handleDragLeave);
+            
+            // 按钮事件监听器
+            saveBtn.addEventListener('click', saveDesign);
+            printBtn.addEventListener('click', printCard);
+            resetBtn.addEventListener('click', resetDesign);
+            
+            // 拖拽开始处理
+            function handleDragStart(e) {
+                draggedItem = {
+                    type: e.target.dataset.type,
+                    content: e.target.querySelector('.data-value, .blessing-text').textContent,
+                    label: e.target.querySelector('.data-label') ? e.target.querySelector('.data-label').textContent : '祝福语'
+                };
+                
+                // 设置拖拽效果
+                e.dataTransfer.setData('text/plain', JSON.stringify(draggedItem));
+                e.dataTransfer.effectAllowed = 'copy';
+                
+                // 添加拖拽视觉反馈
+                e.target.style.opacity = '0.6';
+            }
+            
+            // 拖拽进入放置区域
+            function handleDragEnter(e) {
+                e.preventDefault();
+                dropZone.style.backgroundColor = 'rgba(214, 51, 132, 0.05)';
+            }
+            
+            // 拖拽离开放置区域
+            function handleDragLeave(e) {
+                // 只有当离开到放置区域之外时才移除背景色
+                if (!e.currentTarget.contains(e.relatedTarget)) {
+                    dropZone.style.backgroundColor = '';
+                }
+            }
+            
+            // 拖拽在放置区域上
+            function handleDragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            }
+            
+            // 放置处理
+            function handleDrop(e) {
+                e.preventDefault();
+                
+                // 移除放置区域的背景色
+                dropZone.style.backgroundColor = '';
+                
+                // 获取放置位置（相对于放置区域）
+                const rect = dropZone.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // 获取拖拽数据
+                let data;
+                try {
+                    data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                } catch (error) {
+                    // 如果无法解析JSON，则创建一个默认数据
+                    data = {
+                        type: 'blessing',
+                        content: '祝贺您！',
+                        label: '祝福语'
+                    };
+                }
+                
+                // 创建新元素
+                createDroppedItem(data, x, y);
+                
+                // 隐藏空状态提示
+                emptyState.style.display = 'none';
+                
+                // 恢复拖拽元素的透明度
+                draggableItems.forEach(item => {
+                    item.style.opacity = '1';
+                });
+            }
+            
+            // 创建被放置的元素
+            function createDroppedItem(data, x, y) {
+                // 为每个元素生成唯一ID
+                const id = 'item_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+                
+                // 创建元素
+                const item = document.createElement('div');
+                item.className = 'dropped-item';
+                item.id = id;
+                item.style.left = (x - 60) + 'px'; // 调整位置使元素中心在鼠标位置
+                item.style.top = (y - 40) + 'px';
+                
+                // 根据类型设置不同样式
+                let typeText = '';
+                if (data.type === 'name') typeText = '姓名';
+                else if (data.type === 'nickname') typeText = '暱稱';
+                else typeText = '祝福';
+                
+                item.innerHTML = `
+                    <div class="item-type">${typeText}</div>
+                    <div class="item-content">${data.content}</div>
+                    <button class="delete-btn" onclick="deleteItem('${id}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                
+                // 添加拖拽功能
+                makeDraggable(item);
+                
+                // 添加到放置区域
+                dropZone.appendChild(item);
+                
+                // 保存到设计状态
+                cardDesign.items.push({
+                    id: id,
+                    type: data.type,
+                    content: data.content,
+                    label: data.label,
+                    x: x - 60,
+                    y: y - 40,
+                    width: 200,
+                    height: 80
+                });
+                
+                // 更新最后修改时间
+                cardDesign.lastUpdated = new Date().toISOString();
+                
+                return item;
+            }
+            
+            // 使元素可拖拽
+            function makeDraggable(element) {
+                let isDragging = false;
+                let offsetX, offsetY;
+                
+                element.addEventListener('mousedown', startDragging);
+                
+                function startDragging(e) {
+                    // 只对主按钮点击有效（左键）
+                    if (e.button !== 0) return;
+                    
+                    isDragging = true;
+                    
+                    // 计算鼠标相对于元素位置的偏移
+                    const rect = element.getBoundingClientRect();
+                    offsetX = e.clientX - rect.left;
+                    offsetY = e.clientY - rect.top;
+                    
+                    // 添加选中样式
+                    document.querySelectorAll('.dropped-item').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                    element.classList.add('selected');
+                    
+                    // 添加事件监听器
+                    document.addEventListener('mousemove', onDrag);
+                    document.addEventListener('mouseup', stopDragging);
+                    
+                    // 防止文本选中
+                    e.preventDefault();
+                }
+                
+                function onDrag(e) {
+                    if (!isDragging) return;
+                    
+                    // 计算新位置
+                    const rect = dropZone.getBoundingClientRect();
+                    let newX = e.clientX - rect.left - offsetX;
+                    let newY = e.clientY - rect.top - offsetY;
+                    
+                    // 确保元素不会完全移出放置区域
+                    newX = Math.max(0, Math.min(newX, rect.width - element.offsetWidth));
+                    newY = Math.max(0, Math.min(newY, rect.height - element.offsetHeight));
+                    
+                    // 更新元素位置
+                    element.style.left = newX + 'px';
+                    element.style.top = newY + 'px';
+                    
+                    // 更新设计状态
+                    const itemId = element.id;
+                    const itemIndex = cardDesign.items.findIndex(item => item.id === itemId);
+                    if (itemIndex !== -1) {
+                        cardDesign.items[itemIndex].x = newX;
+                        cardDesign.items[itemIndex].y = newY;
+                        cardDesign.lastUpdated = new Date().toISOString();
+                    }
+                }
+                
+                function stopDragging() {
+                    isDragging = false;
+                    document.removeEventListener('mousemove', onDrag);
+                    document.removeEventListener('mouseup', stopDragging);
+                }
+            }
+            
+            // 删除元素（在全局作用域中，以便内联onclick调用）
+            window.deleteItem = function(id) {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.remove();
+                    
+                    // 从设计状态中移除
+                    const itemIndex = cardDesign.items.findIndex(item => item.id === id);
+                    if (itemIndex !== -1) {
+                        cardDesign.items.splice(itemIndex, 1);
+                        cardDesign.lastUpdated = new Date().toISOString();
+                    }
+                    
+                    // 如果没有元素了，显示空状态
+                    if (cardDesign.items.length === 0) {
+                        emptyState.style.display = 'block';
+                    }
+                }
+            };
+            
+            // 保存设计
+            function saveDesign() {
+                // 在实际应用中，这里会发送数据到服务器
+                // 现在我们使用本地存储模拟
+                localStorage.setItem('cardDesign', JSON.stringify(cardDesign));
+                
+                // 显示保存成功的提示
+                showNotification('设计已保存到本地存储！', 'success');
+                
+                console.log('保存的设计数据:', cardDesign);
+            }
+            
+            // 加载保存的设计
+            function loadSavedDesign() {
+                const savedDesign = localStorage.getItem('cardDesign');
+                if (savedDesign) {
+                    try {
+                        cardDesign = JSON.parse(savedDesign);
+                        
+                        // 清空当前放置区域
+                        dropZone.innerHTML = '';
+                        
+                        // 重新创建元素
+                        if (cardDesign.items.length > 0) {
+                            emptyState.style.display = 'none';
+                            
+                            cardDesign.items.forEach(itemData => {
+                                const item = document.createElement('div');
+                                item.className = 'dropped-item';
+                                item.id = itemData.id;
+                                item.style.left = itemData.x + 'px';
+                                item.style.top = itemData.y + 'px';
+                                
+                                // 根据类型设置不同样式
+                                let typeText = '';
+                                if (itemData.type === 'name') typeText = '姓名';
+                                else if (itemData.type === 'nickname') typeText = '暱稱';
+                                else typeText = '祝福';
+                                
+                                item.innerHTML = `
+                                    <div class="item-type">${typeText}</div>
+                                    <div class="item-content">${itemData.content}</div>
+                                    <button class="delete-btn" onclick="deleteItem('${itemData.id}')">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                `;
+                                
+                                // 添加拖拽功能
+                                makeDraggable(item);
+                                
+                                // 添加到放置区域
+                                dropZone.appendChild(item);
+                            });
+                            
+                            showNotification('已加载上次保存的设计！', 'info');
+                        }
+                    } catch (error) {
+                        console.error('加载保存的设计时出错:', error);
+                    }
+                }
+            }
+            
+            // 打印/下载卡片图片
+            function printCard() {
+                // 使用html2canvas将卡片区域转换为图片
+                const cardContainer = document.querySelector('.card-container');
+                
+                // 显示加载提示
+                showNotification('正在生成图片，请稍候...', 'info');
+                
+                html2canvas(cardContainer, {
+                    backgroundColor: '#f8f0e3',
+                    scale: 2, // 提高分辨率
+                    useCORS: true
+                }).then(canvas => {
+                    // 创建下载链接
+                    const link = document.createElement('a');
+                    link.download = '祝贺卡片_' + new Date().toISOString().slice(0, 10) + '.png';
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    
+                    showNotification('卡片图片已下载！', 'success');
+                }).catch(error => {
+                    console.error('生成图片时出错:', error);
+                    showNotification('生成图片时出错，请重试', 'error');
+                });
+            }
+            
+            // 重置设计
+            function resetDesign() {
+                if (confirm('确定要重置所有设计吗？此操作不可撤销。')) {
+                    // 清空放置区域
+                    dropZone.innerHTML = '';
+                    
+                    // 重置设计状态
+                    cardDesign.items = [];
+                    cardDesign.lastUpdated = new Date().toISOString();
+                    
+                    // 显示空状态
+                    emptyState.style.display = 'block';
+                    
+                    // 从本地存储中清除
+                    localStorage.removeItem('cardDesign');
+                    
+                    showNotification('设计已重置！', 'info');
+                }
+            }
+            
+            // 显示通知
+            function showNotification(message, type) {
+                // 移除之前的通知
+                const existingNotification = document.querySelector('.notification');
+                if (existingNotification) {
+                    existingNotification.remove();
+                }
+                
+                // 创建新通知
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.textContent = message;
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 15px 20px;
+                    background-color: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#007bff'};
+                    color: white;
+                    border-radius: 8px;
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+                    z-index: 1000;
+                    font-weight: 500;
+                    animation: slideIn 0.3s ease-out;
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // 3秒后自动移除
+                setTimeout(() => {
+                    notification.style.animation = 'slideOut 0.3s ease-out';
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.remove();
+                        }
+                    }, 300);
+                }, 3000);
+                
+                // 添加动画关键帧
+                if (!document.querySelector('#notification-styles')) {
+                    const style = document.createElement('style');
+                    style.id = 'notification-styles';
+                    style.textContent = `
+                        @keyframes slideIn {
+                            from { transform: translateX(100%); opacity: 0; }
+                            to { transform: translateX(0); opacity: 1; }
+                        }
+                        @keyframes slideOut {
+                            from { transform: translateX(0); opacity: 1; }
+                            to { transform: translateX(100%); opacity: 0; }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+            }
+            
+            // 初始化：如果设计中有元素，隐藏空状态
+            if (cardDesign.items.length > 0) {
+                emptyState.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
