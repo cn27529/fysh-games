@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>小精靈遊戲 - 兩鬼怪 + 倒數計時</title>
+  <style>
+    body {
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+      color: white;
+      font-family: sans-serif;
+    }
+    canvas {
+      background: #111;
+      border: 2px solid #fff;
+    }
+    #info {
+      margin-top: 10px;
+    }
+    #gameOver {
+      margin-top: 15px;
+      color: red;
+      font-size: 1.5em;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <div id="info">剩餘時間: <span id="time">60</span> 秒 | 豆子數: <span id="score">0</span></div>
+  <div id="gameOver">遊戲結束！</div>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const timeText = document.getElementById("time");
+    const scoreText = document.getElementById("score");
+    const gameOverText = document.getElementById("gameOver");
+
+    const gridSize = 20;
+    let pacman = { x: 200, y: 200, dx: gridSize, dy: 0 };
+    let food = { x: 100, y: 100 };
+    let ghosts = [
+      { x: 300, y: 300, dx: 0, dy: 0, color: "red" },
+      { x: 100, y: 300, dx: 0, dy: 0, color: "cyan" }
+    ];
+
+    let score = 0;
+    let gameOver = false;
+    let timeLeft = 60; // 倒數 60 秒
+
+    function drawPacman() {
+      ctx.beginPath();
+      ctx.arc(pacman.x, pacman.y, gridSize/2, 0.2 * Math.PI, 1.8 * Math.PI); 
+      ctx.lineTo(pacman.x, pacman.y);
+      ctx.fillStyle = "yellow";
+      ctx.fill();
+    }
+
+    function drawFood() {
+      ctx.beginPath();
+      ctx.arc(food.x, food.y, gridSize/4, 0, 2 * Math.PI);
+      ctx.fillStyle = "white";
+      ctx.fill();
+    }
+
+    function drawGhost(ghost) {
+      ctx.beginPath();
+      ctx.arc(ghost.x, ghost.y, gridSize/2, 0, 2 * Math.PI);
+      ctx.fillStyle = ghost.color;
+      ctx.fill();
+    }
+
+    function updatePacman() {
+      pacman.x += pacman.dx;
+      pacman.y += pacman.dy;
+
+      // 邊界循環
+      if (pacman.x < 0) pacman.x = canvas.width;
+      if (pacman.x > canvas.width) pacman.x = 0;
+      if (pacman.y < 0) pacman.y = canvas.height;
+      if (pacman.y > canvas.height) pacman.y = 0;
+
+      // 吃到食物
+      if (Math.abs(pacman.x - food.x) < gridSize && Math.abs(pacman.y - food.y) < gridSize) {
+        score++;
+        scoreText.textContent = score;
+        food.x = Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize;
+        food.y = Math.floor(Math.random() * (canvas.height / gridSize)) * gridSize;
+      }
+    }
+
+    function updateGhost(ghost) {
+      // 鬼怪追逐策略：朝小精靈方向移動
+      if (pacman.x > ghost.x) ghost.dx = gridSize;
+      else if (pacman.x < ghost.x) ghost.dx = -gridSize;
+      else ghost.dx = 0;
+
+      if (pacman.y > ghost.y) ghost.dy = gridSize;
+      else if (pacman.y < ghost.y) ghost.dy = -gridSize;
+      else ghost.dy = 0;
+
+      ghost.x += ghost.dx;
+      ghost.y += ghost.dy;
+
+      // 邊界循環
+      if (ghost.x < 0) ghost.x = canvas.width;
+      if (ghost.x > canvas.width) ghost.x = 0;
+      if (ghost.y < 0) ghost.y = canvas.height;
+      if (ghost.y > canvas.height) ghost.y = 0;
+
+      // 碰到小精靈 → 遊戲結束
+      if (Math.abs(pacman.x - ghost.x) < gridSize && Math.abs(pacman.y - ghost.y) < gridSize) {
+        gameOver = true;
+        gameOverText.textContent = `遊戲結束！你吃了 ${score} 顆豆子`;
+        gameOverText.style.display = "block";
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPacman();
+      drawFood();
+      ghosts.forEach(drawGhost);
+    }
+
+    function gameLoop() {
+      if (!gameOver) {
+        updatePacman();
+        ghosts.forEach(updateGhost);
+        draw();
+      }
+    }
+
+    setInterval(gameLoop, 300);
+
+    // 倒數計時
+    const timer = setInterval(() => {
+      if (!gameOver) {
+        timeLeft--;
+        timeText.textContent = timeLeft;
+        if (timeLeft <= 0) {
+          gameOver = true;
+          clearInterval(timer);
+          gameOverText.textContent = `時間到！你吃了 ${score} 顆豆子`;
+          gameOverText.style.display = "block";
+        }
+      }
+    }, 1000);
+
+    // 控制方向
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowUp") { pacman.dx = 0; pacman.dy = -gridSize; }
+      if (e.key === "ArrowDown") { pacman.dx = 0; pacman.dy = gridSize; }
+      if (e.key === "ArrowLeft") { pacman.dx = -gridSize; pacman.dy = 0; }
+      if (e.key === "ArrowRight") { pacman.dx = gridSize; pacman.dy = 0; }
+    });
+  </script>
+</body>
+</html>

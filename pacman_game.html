@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>簡易小精靈遊戲</title>
+    
+</head>
+<body>
+    <div class="game-container">
+        <h1>小精靈 Pac-Man</h1>
+        <div id="score">分數: 0</div>
+        <div id="grid" class="grid"></div>
+    </div>
+    
+  
+</body>
+<script>
+  const grid = document.querySelector('.grid');
+const scoreDisplay = document.getElementById('score');
+const width = 20; // 每行 20 個格子
+let score = 0;
+
+// 0 - 豆子, 1 - 牆壁, 2 - 空地
+const layout = [
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+    1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,1,
+    1,0,1,1,1,0,1,0,1,1,1,1,0,1,0,1,1,1,0,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,0,1,1,1,0,1,1,1,1,1,1,1,1,0,1,1,1,0,1,
+    1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,
+    1,1,1,1,1,1,1,1,0,1,1,0,1,1,1,1,1,1,1,1,
+    1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,
+    1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+];
+
+const squares = [];
+
+// 繪製地圖
+function createBoard() {
+    for (let i = 0; i < layout.length; i++) {
+        const square = document.createElement('div');
+        grid.appendChild(square);
+        squares.push(square);
+
+        if (layout[i] === 1) {
+            squares[i].classList.add('wall');
+        } else if (layout[i] === 0) {
+            squares[i].classList.add('pac-dot');
+        }
+    }
+}
+createBoard();
+
+// 小精靈初始位置
+let pacmanCurrentIndex = 21;
+squares[pacmanCurrentIndex].classList.add('pac-man');
+
+// 移動邏輯
+function movePacman(e) {
+    squares[pacmanCurrentIndex].classList.remove('pac-man');
+
+    switch(e.keyCode) {
+        case 37: // 左
+            if(pacmanCurrentIndex % width !== 0 && !squares[pacmanCurrentIndex -1].classList.contains('wall')) 
+                pacmanCurrentIndex -= 1;
+            break;
+        case 38: // 上
+            if(pacmanCurrentIndex - width >= 0 && !squares[pacmanCurrentIndex -width].classList.contains('wall')) 
+                pacmanCurrentIndex -= width;
+            break;
+        case 39: // 右
+            if(pacmanCurrentIndex % width < width - 1 && !squares[pacmanCurrentIndex +1].classList.contains('wall')) 
+                pacmanCurrentIndex += 1;
+            break;
+        case 40: // 下
+            if(pacmanCurrentIndex + width < width * width && !squares[pacmanCurrentIndex +width].classList.contains('wall')) 
+                pacmanCurrentIndex += width;
+            break;
+    }
+    
+    squares[pacmanCurrentIndex].classList.add('pac-man');
+    eatDot();
+}
+
+// 吃豆子
+function eatDot() {
+    if (squares[pacmanCurrentIndex].classList.contains('pac-dot')) {
+        score++;
+        scoreDisplay.innerHTML = `分數: ${score}`;
+        squares[pacmanCurrentIndex].classList.remove('pac-dot');
+    }
+}
+
+document.addEventListener('keydown', movePacman);
+</script>
+<style>
+  .grid {
+    display: flex;
+    flex-wrap: wrap;
+    width: 400px;
+    height: 400px;
+    border: 5px solid blue;
+    background-color: black;
+}
+
+.grid div {
+    width: 20px;
+    height: 20px;
+}
+
+/* 牆壁 */
+.wall {
+    background-color: blue;
+}
+
+/* 豆子 */
+.pac-dot {
+    background-color: white;
+    border: 8px solid black;
+    box-sizing: border-box;
+    border-radius: 50%;
+}
+
+/* 小精靈 */
+.pac-man {
+    background-color: yellow;
+    border-radius: 50%;
+}
+
+#score {
+    font-size: 24px;
+    color: white;
+    background: black;
+    text-align: center;
+}
+</style>
+</html>

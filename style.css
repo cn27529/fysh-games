@@ -1,0 +1,39 @@
+.grid {
+    display: flex;
+    flex-wrap: wrap;
+    width: 400px;
+    height: 400px;
+    border: 5px solid blue;
+    background-color: black;
+}
+
+.grid div {
+    width: 20px;
+    height: 20px;
+}
+
+/* 牆壁 */
+.wall {
+    background-color: blue;
+}
+
+/* 豆子 */
+.pac-dot {
+    background-color: white;
+    border: 8px solid black;
+    box-sizing: border-box;
+    border-radius: 50%;
+}
+
+/* 小精靈 */
+.pac-man {
+    background-color: yellow;
+    border-radius: 50%;
+}
+
+#score {
+    font-size: 24px;
+    color: white;
+    background: black;
+    text-align: center;
+}

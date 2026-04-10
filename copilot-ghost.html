@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>小精靈遊戲 - 有鬼怪追逐</title>
+  <style>
+    body {
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    canvas {
+      background: #111;
+      border: 2px solid #fff;
+    }
+    #gameOver {
+      position: absolute;
+      color: red;
+      font-size: 2em;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <div id="gameOver">遊戲結束！</div>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const gameOverText = document.getElementById("gameOver");
+
+    const gridSize = 20;
+    let pacman = { x: 200, y: 200, dx: gridSize, dy: 0 };
+    let food = { x: 100, y: 100 };
+    let ghost = { x: 300, y: 300, dx: 0, dy: 0 };
+
+    let gameOver = false;
+
+    function drawPacman() {
+      ctx.beginPath();
+      ctx.arc(pacman.x, pacman.y, gridSize/2, 0.2 * Math.PI, 1.8 * Math.PI); 
+      ctx.lineTo(pacman.x, pacman.y);
+      ctx.fillStyle = "yellow";
+      ctx.fill();
+    }
+
+    function drawFood() {
+      ctx.beginPath();
+      ctx.arc(food.x, food.y, gridSize/4, 0, 2 * Math.PI);
+      ctx.fillStyle = "white";
+      ctx.fill();
+    }
+
+    function drawGhost() {
+      ctx.beginPath();
+      ctx.arc(ghost.x, ghost.y, gridSize/2, 0, 2 * Math.PI);
+      ctx.fillStyle = "red";
+      ctx.fill();
+    }
+
+    function updatePacman() {
+      pacman.x += pacman.dx;
+      pacman.y += pacman.dy;
+
+      // 邊界循環
+      if (pacman.x < 0) pacman.x = canvas.width;
+      if (pacman.x > canvas.width) pacman.x = 0;
+      if (pacman.y < 0) pacman.y = canvas.height;
+      if (pacman.y > canvas.height) pacman.y = 0;
+
+      // 吃到食物
+      if (Math.abs(pacman.x - food.x) < gridSize && Math.abs(pacman.y - food.y) < gridSize) {
+        food.x = Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize;
+        food.y = Math.floor(Math.random() * (canvas.height / gridSize)) * gridSize;
+      }
+    }
+
+    function updateGhost() {
+      // 鬼怪追逐策略：朝小精靈方向移動
+      if (pacman.x > ghost.x) ghost.dx = gridSize;
+      else if (pacman.x < ghost.x) ghost.dx = -gridSize;
+      else ghost.dx = 0;
+
+      if (pacman.y > ghost.y) ghost.dy = gridSize;
+      else if (pacman.y < ghost.y) ghost.dy = -gridSize;
+      else ghost.dy = 0;
+
+      ghost.x += ghost.dx;
+      ghost.y += ghost.dy;
+
+      // 邊界循環
+      if (ghost.x < 0) ghost.x = canvas.width;
+      if (ghost.x > canvas.width) ghost.x = 0;
+      if (ghost.y < 0) ghost.y = canvas.height;
+      if (ghost.y > canvas.height) ghost.y = 0;
+
+      // 碰到小精靈 → 遊戲結束
+      if (Math.abs(pacman.x - ghost.x) < gridSize && Math.abs(pacman.y - ghost.y) < gridSize) {
+        gameOver = true;
+        gameOverText.style.display = "block";
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPacman();
+      drawFood();
+      drawGhost();
+    }
+
+    function gameLoop() {
+      if (!gameOver) {
+        updatePacman();
+        updateGhost();
+        draw();
+      }
+    }
+
+    setInterval(gameLoop, 300);
+
+    // 控制方向
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowUp") { pacman.dx = 0; pacman.dy = -gridSize; }
+      if (e.key === "ArrowDown") { pacman.dx = 0; pacman.dy = gridSize; }
+      if (e.key === "ArrowLeft") { pacman.dx = -gridSize; pacman.dy = 0; }
+      if (e.key === "ArrowRight") { pacman.dx = gridSize; pacman.dy = 0; }
+    });
+  </script>
+</body>
+</html>

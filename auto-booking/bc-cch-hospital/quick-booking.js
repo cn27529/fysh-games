@@ -9,7 +9,7 @@ async function quickBooking() {
   const page = await browser.newPage();
 
   try {
-    const doctorCode = "0055881";
+    const doctorCode = "0063040";
 
     console.log("🔍 正在檢查掛號頁面...");
     await page.goto(
@@ -34,7 +34,7 @@ async function quickBooking() {
       const doctorLink = await page.$(`a[href*="dr_no=${doctorCode}"]`);
 
       if (doctorLink) {
-        console.log(`✅ 找到${doctorCode}劉又綾醫師！正在掛號...`);
+        console.log(`✅ 找到${doctorCode}邱欣玲醫師！正在掛號...`);
 
         await doctorLink.click();
         await page.waitForNavigation();
@@ -45,8 +45,8 @@ async function quickBooking() {
         const textInputs = await page.$$('input[type="text"]');
 
         if (textInputs.length >= 1) {
-          await textInputs[0].type("P200289819");
-          console.log(`✅ 填寫病歷號: P200289819`);
+          await textInputs[0].type("A123456789");
+          console.log(`✅ 填寫病歷號: A123456789`);
         }
 
         if (textInputs.length >= 2) {

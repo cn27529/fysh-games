@@ -3,9 +3,9 @@ const puppeteer = require("puppeteer");
 class DoctorFinder {
   constructor() {
     this.config = {
-      doctorName: "劉又綾", //
-      doctorCode: "0055881", // 劉又綾 0055881, 黃雅琪 0147226, 邱欣玲 0063040
-      patientId: "P200289819", //P200289819
+      doctorName: "邱欣玲", //
+      doctorCode: "0063040", // 邱欣玲 0063040, 黃雅琪 0147226, 邱欣玲 0063040
+      patientId: "A123456789", //A123456789
       birthday: "0706",
       baseUrl:
         "https://bc.cch.org.tw/BCRG/opd/service-e.aspx?id=0900&Page=11&#p",
@@ -56,7 +56,7 @@ class DoctorFinder {
           })),
         );
 
-        // 尋找劉又綾醫師
+        // 尋找邱欣玲醫師
         const targetDoctor = doctorLinks.find((doctor) =>
           doctor.text.includes(this.config.doctorName),
         );

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Google 小精灵游戏 - 经典吃豆人风格</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0a0f1e 0%, #0c1222 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', 'Press Start 2P', 'VT323', monospace;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: #000000aa;
+            border-radius: 48px;
+            padding: 20px 25px 25px 25px;
+            backdrop-filter: blur(2px);
+            box-shadow: 0 20px 35px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 0 0 4px #ffb347, 0 0 0 8px #ffd966, 0 10px 25px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-top: 18px;
+            background: #1e1a2fcc;
+            padding: 12px 20px;
+            border-radius: 60px;
+            backdrop-filter: blur(4px);
+            color: #f9f3c1;
+            text-shadow: 0 2px 2px black;
+        }
+
+        .score-box, .lives-box {
+            background: #00000066;
+            padding: 6px 18px;
+            border-radius: 32px;
+            font-weight: bold;
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+        }
+
+        .score-box span, .lives-box span {
+            color: #ffd966;
+            font-size: 1.2rem;
+            margin-right: 8px;
+        }
+
+        .restart-btn {
+            background: #ffb347;
+            border: none;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding: 6px 18px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            color: #2d1b00;
+            box-shadow: 0 3px 0 #a05e15;
+        }
+
+        .restart-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #a05e15;
+        }
+
+        .status {
+            background: #0f0e17;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        @media (max-width: 700px) {
+            .game-container { padding: 12px 16px 20px; }
+            .score-box, .lives-box { font-size: 1rem; padding: 4px 12px; }
+            .status { font-size: 0.9rem; }
+            .restart-btn { font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+<div>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="560" height="620"></canvas>
+        <div class="info-panel">
+            <div class="score-box"><span>🍒 SCORE</span> <span id="scoreValue">0</span></div>
+            <div class="lives-box"><span>💖 LIVES</span> <span id="livesValue">3</span></div>
+            <button class="restart-btn" id="restartButton">🔄 新的一局</button>
+        </div>
+        <div class="info-panel" style="margin-top: 12px; justify-content: center;">
+            <div class="status">🎮 方向键 或 WASD &nbsp;&nbsp;|&nbsp; 躲避幽灵 👻</div>
+        </div>
+    </div>
+    <div style="text-align: center; margin-top: 20px; color:#bbb; font-size: 12px;">经典小精灵 — 吃掉所有豆子通关！</div>
+</div>
+
+<script>
+    (function(){
+        // ---------- 迷宫定义 (21x23) 适配经典布局 ----------
+        // 0=墙, 1=普通豆子, 2=大力丸(暂时不用额外效果，只加分), 3=空路, 4=幽灵出生区(通路)
+        // 为了让游戏趣味，大力丸暂做普通豆子加分但可吃幽灵（简易版包含短暂无敌）— 实现高级特性
+        // 简单清晰: 大力丸(2) 额外50分，且幽灵可被吃(5秒无敌) —— 简化但保留经典感
+        
+        const ROWS = 21;
+        const COLS = 23;
+        const CELL_W = 24;   // 560/23 ≈ 24.34 实际使用整数偏移微调
+        const CELL_H = 26;   // 620/21 ≈ 29.5  为了绘制整齐，调整画板尺寸为 552x624? 但现有560x620稍微偏差，修正格子计算
+        
+        // 重设画板实际尺寸，让格子整齐: 23*24 = 552 , 21*28 = 588 不合适 使用 23*24=552 21*28=588 , 画板 560x620略有留边
+        // 我将在绘制时按比例缩放映射? 最好统一逻辑坐标系。重设canvas尺寸为 552x588，用CSS居中。但为了不破坏已有布局，直接重新定义宽高
+        const canvas = document.getElementById('gameCanvas');
+        canvas.width = 552;
+        canvas.height = 588;
+        const ctx = canvas.getContext('2d');
+        
+        // 迷宫模板（经典吃豆人风格布局改编）
+        const rawMaze = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+            [0,1,0,0,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,1,0],
+            [0,1,0,0,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0,0,1,1,0],
+            [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+            [0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,1,0,0,0,1,0,1,0],
+            [0,1,1,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,1,1,0,1,0],
+            [0,0,0,0,0,1,0,0,0,4,0,4,0,0,0,1,0,0,0,0,0,1,0],
+            [0,0,0,0,0,1,0,4,4,4,4,4,4,4,0,1,0,0,0,0,0,1,0],
+            [0,0,0,0,0,1,0,4,0,0,0,0,0,4,0,1,0,0,0,0,0,1,0],
+            [1,1,1,1,1,1,0,4,0,0,0,0,0,4,0,1,1,1,1,1,1,1,0],  // 中间通道
+            [0,0,0,0,0,1,0,4,0,0,0,0,0,4,0,1,0,0,0,0,0,0,0],
+            [0,0,0,0,0,1,0,4,4,4,4,4,4,4,0,1,0,0,0,0,0,0,0],
+            [0,0,0,0,0,1,0,4,0,0,0,0,0,4,0,1,0,0,0,0,0,0,0],
+            [0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+            [0,1,0,0,0,1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,1,0],
+            [0,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,0],
+            [0,0,0,1,0,1,0,1,0,0,0,0,0,1,0,1,0,0,1,0,1,0,0],
+            [0,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0],
+            [0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0],
+            [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+        ];
+        
+        // 复制真实地图（存储当前豆子状态）
+        let maze = [];
+        let dotsLeft = 0;
+        
+        // 游戏变量
+        let pacman = { x: 11, y: 15, dir: 'RIGHT', nextDir: 'RIGHT', mouth: 0, mouthOpen: true };
+        let score = 0;
+        let lives = 3;
+        let gameOver = false;
+        let winFlag = false;
+        let invincibleTimer = 0;   // 无敌帧计数（吃大力丸后）
+        let ghosts = [];
+        
+        // 幽灵类
+        class Ghost {
+            constructor(startX, startY, color, scatterTarget) {
+                this.x = startX;
+                this.y = startY;
+                this.color = color;
+                this.dir = 'UP';
+                this.scatterTarget = scatterTarget; // 散开模式目标点 {x, y}
+                this.mode = 'CHASE'; // CHASE / SCATTER / FRIGHTENED
+                this.frightenedEnd = 0;
+            }
+        }
+        
+        // 初始化幽灵 (红,粉,蓝,橙)
+        function initGhosts() {
+            return [
+                new Ghost(11, 9, '#FF5F5F', {x: 1, y: 1}),   // 红色  scatter左上
+                new Ghost(13, 9, '#FFB8FF', {x: 21, y: 1}),  // 粉色 右上
+                new Ghost(10, 9, '#5FCDFF', {x: 21, y: 19}), // 蓝色 右下
+                new Ghost(12, 9, '#FFB347', {x: 1, y: 19})    // 橙色 左下
+            ];
+        }
+        
+        // 重置豆子
+        function resetMaze() {
+            maze = rawMaze.map(row => [...row]);
+            dotsLeft = 0;
+            for(let i=0;i<ROWS;i++){
+                for(let j=0;j<COLS;j++){
+                    if(maze[i][j] === 1) dotsLeft++;
+                    else if(maze[i][j] === 2) { dotsLeft++; maze[i][j]=1; } // 大力丸变成普通豆，但后期实现额外
+                }
+            }
+            // 手动增加几个大力丸（特定位置）
+            if(maze[1][1] === 1) { maze[1][1] = 2; } 
+            if(maze[18][21] === 1) { maze[18][21] = 2; }
+            if(maze[10][11] === 1) { maze[10][11] = 2; }
+            if(maze[3][20] === 1) { maze[3][20] = 2; }
+        }
+        
+        function resetGame() {
+            gameOver = false;
+            winFlag = false;
+            score = 0;
+            lives = 3;
+            invincibleTimer = 0;
+            updateUI();
+            resetMaze();
+            pacman = { x: 11, y: 15, dir: 'RIGHT', nextDir: 'RIGHT', mouth: 0, mouthOpen: true };
+            ghosts = initGhosts();
+            for(let g of ghosts) {
+                g.mode = 'CHASE';
+                g.frightenedEnd = 0;
+            }
+            if(window.gameInterval) clearInterval(window.gameInterval);
+            startGameLoop();
+        }
+        
+        // 移动检测
+        function canMove(x, y, dir) {
+            let nx = x, ny = y;
+            switch(dir){
+                case 'UP': ny--; break;
+                case 'DOWN': ny++; break;
+                case 'LEFT': nx--; break;
+                case 'RIGHT': nx++; break;
+            }
+            if(ny<0 || ny>=ROWS || nx<0 || nx>=COLS) return false;
+            let cell = maze[ny][nx];
+            return cell !== 0;
+        }
+        
+        function movePacman() {
+            if(gameOver || winFlag) return;
+            // 尝试转向
+            if(canMove(pacman.x, pacman.y, pacman.nextDir)){
+                pacman.dir = pacman.nextDir;
+            }
+            if(canMove(pacman.x, pacman.y, pacman.dir)){
+                let nx = pacman.x, ny = pacman.y;
+                switch(pacman.dir){
+                    case 'UP': ny--; break;
+                    case 'DOWN': ny++; break;
+                    case 'LEFT': nx--; break;
+                    case 'RIGHT': nx++; break;
+                }
+                pacman.x = nx; pacman.y = ny;
+                // 吃豆逻辑
+                let cell = maze[ny][nx];
+                if(cell === 1 || cell === 2){
+                    let points = (cell === 2) ? 50 : 10;
+                    score += points;
+                    updateUI();
+                    maze[ny][nx] = 3;
+                    dotsLeft--;
+                    if(cell === 2){
+                        // 大力丸: 无敌模式持续 150帧 (约2.5秒 60帧)
+                        invincibleTimer = 150;
+                        for(let g of ghosts){
+                            if(g.mode !== 'FRIGHTENED'){
+                                g.mode = 'FRIGHTENED';
+                                g.frightenedEnd = Date.now() + 4000;
+                            }
+                        }
+                    }
+                    if(dotsLeft === 0){
+                        winFlag = true;
+                        gameOver = true;
+                        clearInterval(window.gameInterval);
+                        alert("🎉 恭喜通关！ 完美胜利 🎉");
+                        return;
+                    }
+                }
+            }
+            // 边界传送（左右隧道）
+            if(pacman.x === 0 && pacman.y === 10) pacman.x = COLS-2;
+            if(pacman.x === COLS-1 && pacman.y === 10) pacman.x = 1;
+        }
+        
+        // 幽灵 AI 移动
+        function moveGhosts(){
+            for(let g of ghosts){
+                if(gameOver) break;
+                // 更新 frightened 结束
+                if(g.mode === 'FRIGHTENED' && Date.now() > g.frightenedEnd){
+                    g.mode = 'CHASE';
+                }
+                let possible = [];
+                let dirs = ['UP','DOWN','LEFT','RIGHT'];
+                for(let d of dirs){
+                    let nx = g.x, ny = g.y;
+                    switch(d){
+                        case 'UP': ny--; break;
+                        case 'DOWN': ny++; break;
+                        case 'LEFT': nx--; break;
+                        case 'RIGHT': nx++; break;
+                    }
+                    if(ny>=0 && ny<ROWS && nx>=0 && nx<COLS && maze[ny][nx] !== 0){
+                        possible.push(d);
+                    }
+                }
+                if(possible.length === 0) return;
+                let targetDir = g.dir;
+                if(g.mode === 'FRIGHTENED'){
+                    // 随机移动
+                    let rand = Math.floor(Math.random() * possible.length);
+                    targetDir = possible[rand];
+                } else {
+                    // 追逐模式或散开模式，简单追逐玩家或者散开点
+                    let target;
+                    if(g.mode === 'CHASE'){
+                        target = {x: pacman.x, y: pacman.y};
+                    } else {
+                        target = g.scatterTarget;
+                    }
+                    let bestDir = null;
+                    let bestDist = Infinity;
+                    for(let d of possible){
+                        let nx = g.x, ny = g.y;
+                        switch(d){
+                            case 'UP': ny--; break;
+                            case 'DOWN': ny++; break;
+                            case 'LEFT': nx--; break;
+                            case 'RIGHT': nx++; break;
+                        }
+                        let dist = Math.abs(nx - target.x) + Math.abs(ny - target.y);
+                        if(dist < bestDist){
+                            bestDist = dist;
+                            bestDir = d;
+                        }
+                    }
+                    if(bestDir) targetDir = bestDir;
+                    else targetDir = possible[0];
+                }
+                // 执行移动
+                switch(targetDir){
+                    case 'UP': g.y--; break;
+                    case 'DOWN': g.y++; break;
+                    case 'LEFT': g.x--; break;
+                    case 'RIGHT': g.x++; break;
+                }
+                g.dir = targetDir;
+                // 幽灵隧道传送
+                if(g.x === 0 && g.y === 10) g.x = COLS-2;
+                if(g.x === COLS-1 && g.y === 10) g.x = 1;
+            }
+        }
+        
+        function checkCollision(){
+            if(invincibleTimer > 0) return false;
+            for(let g of ghosts){
+                if(g.x === pacman.x && g.y === pacman.y){
+                    if(g.mode === 'FRIGHTENED'){
+                        // 吃掉幽灵加分
+                        score += 200;
+                        updateUI();
+                        // 重置幽灵到初始位置
+                        let idx = ghosts.indexOf(g);
+                        if(idx === 0) { g.x = 11; g.y = 9; }
+                        if(idx === 1) { g.x = 13; g.y = 9; }
+                        if(idx === 2) { g.x = 10; g.y = 9; }
+                        if(idx === 3) { g.x = 12; g.y = 9; }
+                        g.mode = 'CHASE';
+                        g.frightenedEnd = 0;
+                    } else {
+                        // 死亡
+                        lives--;
+                        updateUI();
+                        if(lives <= 0){
+                            gameOver = true;
+                            clearInterval(window.gameInterval);
+                            alert("💀 GAME OVER 💀 点击新的一局");
+                        } else {
+                            // 重置位置
+                            pacman = { x: 11, y: 15, dir: 'RIGHT', nextDir: 'RIGHT', mouth: 0, mouthOpen: true };
+                            ghosts = initGhosts();
+                            invincibleTimer = 40; // 短暂无敌重生
+                        }
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        
+        function updateUI(){
+            document.getElementById('scoreValue').innerText = score;
+            document.getElementById('livesValue').innerText = lives;
+        }
+        
+        // 绘制所有图形
+        function draw(){
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            // 画迷宫
+            for(let row=0; row<ROWS; row++){
+                for(let col=0; col<COLS; col++){
+                    let cell = maze[row][col];
+                    let x = col * CELL_W;
+                    let y = row * CELL_H;
+                    if(cell === 0){
+                        ctx.fillStyle = '#0a2f6c';
+                        ctx.fillRect(x, y, CELL_W-1, CELL_H-1);
+                        ctx.fillStyle = '#1e4d8f';
+                        ctx.fillRect(x+2, y+2, CELL_W-5, CELL_H-5);
+                    } else if(cell === 1){
+                        ctx.fillStyle = '#f7d44a';
+                        ctx.beginPath();
+                        ctx.arc(x+CELL_W/2, y+CELL_H/2, 4, 0, Math.PI*2);
+                        ctx.fill();
+                    } else if(cell === 2){
+                        ctx.fillStyle = '#ffaa44';
+                        ctx.beginPath();
+                        ctx.arc(x+CELL_W/2, y+CELL_H/2, 8, 0, Math.PI*2);
+                        ctx.fill();
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath();
+                        ctx.arc(x+CELL_W/2, y+CELL_H/2, 3, 0, Math.PI*2);
+                        ctx.fill();
+                    } else {
+                        // 通路
+                        ctx.fillStyle = '#03071e';
+                        ctx.fillRect(x, y, CELL_W-1, CELL_H-1);
+                    }
+                }
+            }
+            // 画小精灵
+            let px = pacman.x * CELL_W;
+            let py = pacman.y * CELL_H;
+            let angle = 0;
+            switch(pacman.dir){
+                case 'RIGHT': angle = 0; break;
+                case 'DOWN': angle = Math.PI/2; break;
+                case 'LEFT': angle = Math.PI; break;
+                case 'UP': angle = -Math.PI/2; break;
+            }
+            let mouthAngle = (Math.sin(Date.now() * 0.015) * 0.4 + 0.4);
+            ctx.save();
+            ctx.translate(px+CELL_W/2, py+CELL_H/2);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.arc(0, 0, 11, mouthAngle, Math.PI*2 - mouthAngle);
+            ctx.lineTo(0,0);
+            ctx.fillStyle = '#FFFF66';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(-3, -3, 2, 0, Math.PI*2);
+            ctx.fillStyle = '#000';
+            ctx.fill();
+            ctx.restore();
+            
+            // 幽灵
+            for(let g of ghosts){
+                let gx = g.x * CELL_W;
+                let gy = g.y * CELL_H;
+                ctx.fillStyle = (g.mode === 'FRIGHTENED') ? '#B0E0E6' : g.color;
+                ctx.beginPath();
+                ctx.arc(gx+CELL_W/2, gy+CELL_H/2-3, 10, 0, Math.PI*2);
+                ctx.fillRect(gx+2, gy+CELL_H/2-4, CELL_W-4, 10);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(gx+CELL_W/2-4, gy+CELL_H/2-6, 3, 0, Math.PI*2);
+                ctx.arc(gx+CELL_W/2+4, gy+CELL_H/2-6, 3, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#0011ff';
+                ctx.beginPath();
+                ctx.arc(gx+CELL_W/2-4, gy+CELL_H/2-6, 1.2, 0, Math.PI*2);
+                ctx.arc(gx+CELL_W/2+4, gy+CELL_H/2-6, 1.2, 0, Math.PI*2);
+                ctx.fill();
+            }
+            
+            if(invincibleTimer > 0){
+                ctx.globalAlpha = 0.6;
+                ctx.fillStyle = 'gold';
+                ctx.fillRect(0,0,canvas.width,30);
+                ctx.globalAlpha = 1;
+                invincibleTimer--;
+            }
+            if(gameOver && !winFlag){
+                ctx.font = "bold 26 monospace";
+                ctx.fillStyle = "red";
+                ctx.shadowBlur=0;
+                ctx.fillText("GAME OVER", canvas.width/2-90, canvas.height/2);
+            } else if(winFlag){
+                ctx.font = "bold 26 monospace";
+                ctx.fillStyle = "lime";
+                ctx.fillText("YOU WIN!", canvas.width/2-70, canvas.height/2);
+            }
+        }
+        
+        // 游戏主循环
+        let lastTimestamp = 0;
+        function gameUpdate(){
+            if(gameOver) return;
+            movePacman();
+            moveGhosts();
+            checkCollision();
+            draw();
+        }
+        
+        function startGameLoop(){
+            if(window.gameInterval) clearInterval(window.gameInterval);
+            window.gameInterval = setInterval(() => {
+                gameUpdate();
+            }, 1000/60);
+        }
+        
+        // 键盘控制
+        function handleKey(e){
+            let key = e.key;
+            if(gameOver) return;
+            switch(key){
+                case 'ArrowUp': case 'w': case 'W': pacman.nextDir = 'UP'; break;
+                case 'ArrowDown': case 's': case 'S': pacman.nextDir = 'DOWN'; break;
+                case 'ArrowLeft': case 'a': case 'A': pacman.nextDir = 'LEFT'; break;
+                case 'ArrowRight': case 'd': case 'D': pacman.nextDir = 'RIGHT'; break;
+                default: return;
+            }
+            e.preventDefault();
+        }
+        
+        window.addEventListener('keydown', handleKey);
+        document.getElementById('restartButton').addEventListener('click', ()=>{
+            clearInterval(window.gameInterval);
+            resetGame();
+        });
+        
+        resetGame();
+        draw();
+    })();
+</script>
+</body>
+</html>
