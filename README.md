@@ -1,5 +1,8 @@
 # fysh games
 
+## whack-a-mole
+2026打地鼠遊戲
+
 ## auto booking
 
 2026 網路很進步、代碼很強大、AI很狂妄
@@ -8,9 +11,12 @@
 
 2025 Vibe Coding
 
-## tic-tac-toe, whack-a-mole
+### tic-tac-toe
+2025 井字圈叉遊戲
 
-2025 井字圈叉遊戲, 打地鼠遊戲
+
+
+
 
 ## wp cyber panel
 
