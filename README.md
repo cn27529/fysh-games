@@ -14,12 +14,10 @@
 ### tic-tac-toe
 2025 井字圈叉遊戲
 
-
-
-
-
 ## wp cyber panel
 
-2024
+2024 WP
 
 ## happy hcj
+
+HTML, CSS, Javascript
