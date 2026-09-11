@@ -1,7 +1,7 @@
 # fysh games
 
 ## whack-a-mole
-2026打地鼠遊戲
+2026 打地鼠遊戲
 
 ## auto booking
 
