@@ -1,4 +1,4 @@
-# fysh games
+# fysh games 資訊研究社
 
 ## whack-a-mole
 2026 打地鼠遊戲
