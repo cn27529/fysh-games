@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>經典復古太空射擊遊戲 - Galaga Style</title>
+  <title>經典復古太空射擊遊戲 - Galaga Style (無限平行加寬版)</title>
   <style>
-    /* 全局重置，確保全螢幕無邊框與滾動條 */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -23,7 +22,6 @@
       font-family: 'Courier New', Courier, monospace, "Microsoft JhengHei", sans-serif;
     }
 
-    /* 全螢幕 Canvas 畫布 */
     #gameCanvas {
       display: block;
       width: 100vw;
@@ -31,7 +29,6 @@
       background: #000;
     }
 
-    /* 開始與結束畫面覆蓋層 */
     #overlay {
       position: absolute;
       top: 0;
@@ -58,10 +55,10 @@
     }
 
     #overlay p {
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       color: #00ffff;
       margin-bottom: 25px;
-      line-height: 1.6;
+      line-height: 1.7;
     }
 
     #startBtn {
@@ -86,46 +83,42 @@
 </head>
 <body>
 
-  <!-- 全螢幕遊戲畫布 -->
   <canvas id="gameCanvas"></canvas>
 
-  <!-- 開始 / 遊戲結束 提示面板 -->
   <div id="overlay">
     <h1 id="overlayTitle">小蜜蜂 GALAGA</h1>
-    <p id="overlayDesc">按住 [ ← ][ → ] 或 [ A ][ D ] 移動並自動連發射擊<br>手機裝置可直接按住螢幕拖曳<br>吃到 ⚡ 可加寬射擊範圍！</p>
+    <p id="overlayDesc">
+      按住 [ ← ][ → ] 或 [ A ][ D ] 移動並自動連發<br>
+      手機裝置可直接按住螢幕拖曳<br><br>
+      <span style="color:#00e5ff">🔷 平行加寬 (吃到無限 +2 排，爽度破表！)</span><br>
+      <span style="color:#ffff00">⚡ 扇形散射 (廣角掃蕩)</span> ｜ 
+      <span style="color:#00ff88">🛡️ 護盾</span>
+    </p>
     <button id="startBtn">開始遊戲</button>
   </div>
 
   <script>
-    // =========================================================================
-    // 遊戲核心參數配置區域 (CONFIG)
-    // =========================================================================
     const CONFIG = {
-      // 玩家與生命值設定
-      INITIAL_LIVES: 5,        // 玩家初始生命值
-      PLAYER_SPEED: 7,         // 玩家左右移動速度 (像素/幀)
-      AUTO_FIRE_RATE: 120,     // 自動發射間隔時間 (毫秒)
-      BULLET_SPEED: 10,        // 玩家子彈基礎速度
+      INITIAL_LIVES: 5,        
+      PLAYER_SPEED: 7,         
+      AUTO_FIRE_RATE: 110,     // 稍微提高連發手感
+      BULLET_SPEED: 11,        
 
-      // 敵人與難度設定
-      ENEMY_BASE_SPEED: 2,     // 敵人在陣型中的擺動速度
-      ENEMY_DIVE_SPEED: 3.5,   // 敵人俯衝攻擊速度
-      ENEMY_FIRE_CHANCE: 0.008,// 敵人每幀發射子彈的機率
+      ENEMY_BASE_SPEED: 2,     
+      ENEMY_DIVE_SPEED: 3.5,   
+      ENEMY_FIRE_CHANCE: 0.008,
 
-      // 圖示與 Emoji 設定
       EMOJIS: {
-        BOSS: '👾',            // 大 Boss 圖示
-        ENEMY_RED: '🦀',       // 紅色螃蟹外星人
-        ENEMY_GREEN: '🪲',     // 綠色甲蟲外星人
-        SHIELD_ITEM: '🛡️',     // 防護罩掉落道具
-        WEAPON_ITEM: '⚡',     // 【新增】子彈升級道具圖示
-        LIVES_ICON: '❤️'       // HUD 顯示的生命值圖示
+        BOSS: '👾',            
+        ENEMY_RED: '🦀',       
+        ENEMY_GREEN: '🪲',     
+        SHIELD_ITEM: '🛡️',     
+        WEAPON_SPREAD: '⚡',   
+        WEAPON_WIDE: '🔷',     
+        LIVES_ICON: '❤️'       
       }
     };
 
-    // =========================================================================
-    // 初始化環境與狀態變數
-    // =========================================================================
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const overlay = document.getElementById('overlay');
@@ -136,33 +129,25 @@
     let width = 0;
     let height = 0;
 
-    // 視窗大小自適應
     function resizeCanvas() {
       width = window.innerWidth;
       height = window.innerHeight;
       canvas.width = width;
       canvas.height = height;
       if (player) {
-        player.y = height - 70; // 確保戰機保持在底部
+        player.y = height - 70;
       }
     }
     window.addEventListener('resize', resizeCanvas);
 
-    // 按鍵狀態追蹤
-    const keys = {
-      left: false,
-      right: false
-    };
-
-    // 遊戲全域狀態
-    let gameState = 'START'; // 'START', 'PLAYING', 'GAMEOVER'
+    const keys = { left: false, right: false };
+    let gameState = 'START';
     let score = 0;
     let lives = CONFIG.INITIAL_LIVES;
     let wave = 1;
     let lastShootTime = 0;
     let touchX = null;
 
-    // 遊戲物件陣列
     let player;
     let stars = [];
     let playerBullets = [];
@@ -171,11 +156,6 @@
     let particles = [];
     let powerups = [];
 
-    // =========================================================================
-    // 遊戲基礎類別 (Classes)
-    // =========================================================================
-
-    // 背景星空顆粒
     class Star {
       constructor() {
         this.reset();
@@ -200,7 +180,6 @@
       }
     }
 
-    // 玩家戰機
     class Player {
       constructor() {
         this.width = 40;
@@ -209,53 +188,43 @@
         this.y = height - 70;
         this.shieldActive = false;
         this.shieldTimer = 0;
-        this.weaponLevel = 1; // 【新增】武器等級，吃到⚡會提升，最高3級
+
+        // 武器型態
+        this.weaponType = 'WIDE'; 
+        this.wideRows = 2;        // 【無限加寬】：初始 2 排，吃到 🔷 每次 +2
+        this.spreadLevel = 1;     // 扇形等級 (1~3)
       }
 
       update() {
-        // 鍵盤操控移動
-        if (keys.left && this.x > 0) {
-          this.x -= CONFIG.PLAYER_SPEED;
-        }
-        if (keys.right && this.x < width - this.width) {
-          this.x += CONFIG.PLAYER_SPEED;
-        }
+        if (keys.left && this.x > 0) this.x -= CONFIG.PLAYER_SPEED;
+        if (keys.right && this.x < width - this.width) this.x += CONFIG.PLAYER_SPEED;
 
-        // 觸控/滑鼠拖曳操控
         if (touchX !== null) {
           const targetX = touchX - this.width / 2;
-          this.x += (targetX - this.x) * 0.2; // 順滑跟隨
-          // 限制邊界
+          this.x += (targetX - this.x) * 0.2;
           if (this.x < 0) this.x = 0;
           if (this.x > width - this.width) this.x = width - this.width;
         }
 
-        // 防護罩時間倒數
         if (this.shieldActive) {
           this.shieldTimer--;
-          if (this.shieldTimer <= 0) {
-            this.shieldActive = false;
-          }
+          if (this.shieldTimer <= 0) this.shieldActive = false;
         }
       }
 
-      // 繪製像素經典戰機 (紅白相間)
       draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
 
-        // 主機身 (白色)
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(16, 0, 8, 36);
         ctx.fillRect(8, 16, 24, 12);
 
-        // 機翼紅角 (紅色)
         ctx.fillStyle = '#FF0033';
         ctx.fillRect(0, 20, 8, 16);
         ctx.fillRect(32, 20, 8, 16);
         ctx.fillRect(16, 8, 8, 6);
 
-        // 防護罩光圈特效
         if (this.shieldActive) {
           ctx.strokeStyle = '#00ffff';
           ctx.lineWidth = 3;
@@ -270,22 +239,17 @@
       }
     }
 
-    // 外星敵人 (支援普通敵人與大 Boss Emoji 渲染)
     class Enemy {
       constructor(x, y, type) {
         this.startX = x;
         this.startY = y;
         this.x = x;
         this.y = y;
-        this.type = type; // 'GREEN', 'RED', 'BOSS'
+        this.type = type;
         this.width = type === 'BOSS' ? 60 : 36;
         this.height = type === 'BOSS' ? 60 : 36;
-
-        // Boss 血量判定
-        this.hp = type === 'BOSS' ? 25 + wave * 5 : 1;
+        this.hp = type === 'BOSS' ? 30 + wave * 8 : 1; // 稍微增強 Boss 扛得住彈幕
         this.maxHp = this.hp;
-
-        // 俯衝與擺動狀態
         this.isDiving = false;
         this.diveAngle = 0;
         this.diveSpeed = CONFIG.ENEMY_DIVE_SPEED;
@@ -294,29 +258,24 @@
 
       update(formationTime) {
         if (!this.isDiving) {
-          // 隊伍陣型擺動 (左右浮動)
           const swing = Math.sin(formationTime * 0.003 + this.swingOffset) * 40;
           this.x = this.startX + swing;
           this.y = this.startY + Math.sin(formationTime * 0.002) * 10;
 
-          // 隨機發起俯衝
           if (Math.random() < 0.0008 * wave && this.type !== 'BOSS') {
             this.isDiving = true;
           }
         } else {
-          // 俯衝軌跡邏輯
           this.y += this.diveSpeed;
           this.x += Math.sin(this.diveAngle) * 3;
           this.diveAngle += 0.05;
 
-          // 俯衝超越底部後，回歸上方陣型
           if (this.y > height) {
             this.y = -50;
             this.isDiving = false;
           }
         }
 
-        // 隨機發射子彈
         if (Math.random() < CONFIG.ENEMY_FIRE_CHANCE && this.y > 0 && this.y < height - 100) {
           enemyBullets.push(new Bullet(this.x + this.width / 2, this.y + this.height, 4, '#ff3300', true));
         }
@@ -328,26 +287,20 @@
         ctx.textBaseline = 'middle';
 
         if (this.type === 'BOSS') {
-          // 繪製大 Boss (使用 Emoji)
-          ctx.font = '96px sans-serif';
-
-          // Boss 紫紅色脈衝光暈
+          ctx.font = '48px sans-serif';
           ctx.shadowColor = this.hp < this.maxHp * 0.5 ? '#ff0000' : '#aa00ff';
           ctx.shadowBlur = 15 + Math.sin(Date.now() / 150) * 10;
-
           ctx.fillText(CONFIG.EMOJIS.BOSS, this.x + this.width / 2, this.y + this.height / 2);
 
-          // 繪製 Boss 血條
           ctx.shadowBlur = 0;
-          const barWidth = 50;
+          const barWidth = 60;
           const barHeight = 6;
           const healthRatio = this.hp / this.maxHp;
           ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-          ctx.fillRect(this.x + (this.width - barWidth) / 2, this.y - 12, barWidth, barHeight);
+          ctx.fillRect(this.x + (this.width - barWidth) / 2, this.y - 14, barWidth, barHeight);
           ctx.fillStyle = '#00ffcc';
-          ctx.fillRect(this.x + (this.width - barWidth) / 2, this.y - 12, barWidth * healthRatio, barHeight);
+          ctx.fillRect(this.x + (this.width - barWidth) / 2, this.y - 14, barWidth * healthRatio, barHeight);
         } else {
-          // 普通敵人 (使用 Emoji 渲染)
           ctx.font = '28px sans-serif';
           const emoji = this.type === 'RED' ? CONFIG.EMOJIS.ENEMY_RED : CONFIG.EMOJIS.ENEMY_GREEN;
           ctx.fillText(emoji, this.x + this.width / 2, this.y + this.height / 2);
@@ -357,21 +310,19 @@
       }
     }
 
-    // 子彈類別
     class Bullet {
-      // 【修改】新增 vx 參數（預設為 0），代表水平速度，用於散彈加寬
       constructor(x, y, speed, color, isEnemy = false, vx = 0) {
         this.x = x;
         this.y = y;
         this.speed = speed;
         this.color = color;
         this.isEnemy = isEnemy;
-        this.vx = vx; // 水平向量偏移
+        this.vx = vx;
         this.width = 4;
         this.height = 12;
       }
       update() {
-        this.x += this.vx; // 【新增】水平位移更新
+        this.x += this.vx;
         if (this.isEnemy) {
           this.y += this.speed;
         } else {
@@ -387,7 +338,6 @@
       }
     }
 
-    // 爆炸粒子特效
     class Particle {
       constructor(x, y, color) {
         this.x = x;
@@ -411,15 +361,12 @@
       }
     }
 
-    // 掉落道具 (支援護盾與武器強化)
     class PowerUp {
-      // 【修改】新增 type 參數：'SHIELD' (護盾) 或 'WEAPON' (子彈強化)
-      constructor(x, y, type = 'SHIELD') {
+      constructor(x, y, type) {
         this.x = x;
         this.y = y;
         this.type = type;
         this.speed = 2;
-        this.size = 24;
       }
       update() {
         this.y += this.speed;
@@ -428,27 +375,22 @@
         ctx.font = '22px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        // 依據道具類型繪製不同的 Emoji
-        const icon = this.type === 'WEAPON' ? CONFIG.EMOJIS.WEAPON_ITEM : CONFIG.EMOJIS.SHIELD_ITEM;
+        let icon = CONFIG.EMOJIS.SHIELD_ITEM;
+        if (this.type === 'WEAPON_SPREAD') icon = CONFIG.EMOJIS.WEAPON_SPREAD;
+        if (this.type === 'WEAPON_WIDE') icon = CONFIG.EMOJIS.WEAPON_WIDE;
         ctx.fillText(icon, this.x, this.y);
       }
     }
-
-    // =========================================================================
-    // 關卡與陣型建立 (Formations)
-    // =========================================================================
 
     function createWave(waveNum) {
       enemies = [];
       const centerX = width / 2;
 
-      // 每 3 關觸發一次 Boss 戰
       if (waveNum % 3 === 0) {
         enemies.push(new Enemy(centerX - 30, 100, 'BOSS'));
         return;
       }
 
-      // 波次 1, 4, 7... 心形陣型
       if (waveNum % 3 === 1) {
         const heartCoords = [
           { r: 0, c: 0 },
@@ -463,9 +405,7 @@
           const y = 220 + pt.r * 40;
           enemies.push(new Enemy(x, y, 'GREEN'));
         });
-      } 
-      // 波次 2, 5, 8... 經典網格陣型
-      else {
+      } else {
         const rows = 5;
         const cols = 7;
         const spacingX = 45;
@@ -483,45 +423,61 @@
       }
     }
 
-    // 生成爆炸特效
     function createExplosion(x, y, color = '#ffcc00', count = 15) {
       for (let i = 0; i < count; i++) {
         particles.push(new Particle(x, y, color));
       }
     }
 
-    // 【修改】自動發射子彈邏輯：依武器等級加寬射擊範圍
+    // =========================================================================
+    // 【核心】自動發射邏輯：支援無上限平行加寬
+    // =========================================================================
     function handleAutoFire(now) {
       if (now - lastShootTime > CONFIG.AUTO_FIRE_RATE) {
         const spd = CONFIG.BULLET_SPEED;
+        const centerX = player.x + player.width / 2;
+        const topY = player.y;
 
-        if (player.weaponLevel === 1) {
-          // 等級 1：原版雙發平行直線子彈 (紅色)
-          playerBullets.push(new Bullet(player.x + 8, player.y, spd, '#ff0033'));
-          playerBullets.push(new Bullet(player.x + player.width - 8, player.y, spd, '#ff0033'));
+        // ----------------------------------------------------
+        // 型態一：扇型散射 (SPREAD)
+        // ----------------------------------------------------
+        if (player.weaponType === 'SPREAD') {
+          if (player.spreadLevel === 1) {
+            playerBullets.push(new Bullet(centerX, topY, spd, '#ffff00', false, 0));
+            playerBullets.push(new Bullet(centerX - 10, topY, spd, '#ffff00', false, -1.8));
+            playerBullets.push(new Bullet(centerX + 10, topY, spd, '#ffff00', false, 1.8));
+          } else if (player.spreadLevel === 2) {
+            const vxs = [-3, -1.5, 0, 1.5, 3];
+            vxs.forEach(vx => playerBullets.push(new Bullet(centerX, topY, spd, '#ff9900', false, vx)));
+          } else {
+            const vxs = [-4.5, -3, -1.5, 0, 1.5, 3, 4.5];
+            vxs.forEach(vx => playerBullets.push(new Bullet(centerX, topY, spd, '#ff3300', false, vx)));
+          }
         } 
-        else if (player.weaponLevel === 2) {
-          // 等級 2：三向扇形射擊 (青色)，包含中間直線與兩側微斜
-          playerBullets.push(new Bullet(player.x + player.width / 2, player.y, spd, '#00ffff', false, 0));
-          playerBullets.push(new Bullet(player.x + 6, player.y, spd, '#00ffff', false, -2));
-          playerBullets.push(new Bullet(player.x + player.width - 6, player.y, spd, '#00ffff', false, 2));
-        } 
-        else if (player.weaponLevel >= 3) {
-          // 等級 3：五向大廣角加寬扇形射擊 (金色)，涵蓋大範圍前方視野
-          playerBullets.push(new Bullet(player.x + player.width / 2, player.y, spd, '#ffcc00', false, 0));
-          playerBullets.push(new Bullet(player.x + 8, player.y, spd, '#ffcc00', false, -1.8));
-          playerBullets.push(new Bullet(player.x + player.width - 8, player.y, spd, '#ffcc00', false, 1.8));
-          playerBullets.push(new Bullet(player.x, player.y, spd, '#ffcc00', false, -3.8));
-          playerBullets.push(new Bullet(player.x + player.width, player.y, spd, '#ffcc00', false, 3.8));
+        // ----------------------------------------------------
+        // 型態二：平行加寬 (WIDE) - 2 / 4 / 6 / 8 / 10 / 12... 無限加排！
+        // ----------------------------------------------------
+        else if (player.weaponType === 'WIDE') {
+          const rows = player.wideRows;
+          const spacing = 12; // 每排子彈橫向間距 (px)
+          const totalWidth = (rows - 1) * spacing;
+          const startX = centerX - totalWidth / 2; // 對稱中心點向兩側鋪排
+
+          // 彈幕顏色根據排數演進，越高排越酷炫！
+          let bulletColor = '#00e5ff'; // 2~4 排：青藍色
+          if (rows >= 6 && rows < 10) bulletColor = '#00ffaa'; // 6~8 排：霓虹綠
+          if (rows >= 10 && rows < 16) bulletColor = '#ff00ff'; // 10~14 排：紫光
+          if (rows >= 16) bulletColor = '#ffff00'; // 16 排以上：金光神域
+
+          for (let i = 0; i < rows; i++) {
+            const bulletX = startX + i * spacing;
+            playerBullets.push(new Bullet(bulletX, topY, spd, bulletColor, false, 0));
+          }
         }
 
         lastShootTime = now;
       }
     }
-
-    // =========================================================================
-    // 遊戲主循環 (Main Game Loop)
-    // =========================================================================
 
     function initGame() {
       score = 0;
@@ -532,11 +488,8 @@
       particles = [];
       powerups = [];
 
-      // 初始化背景星空
       stars = [];
-      for (let i = 0; i < 80; i++) {
-        stars.push(new Star());
-      }
+      for (let i = 0; i < 80; i++) stars.push(new Star());
 
       player = new Player();
       createWave(wave);
@@ -545,32 +498,26 @@
     function update(now) {
       if (gameState !== 'PLAYING') return;
 
-      // 更新星空
       stars.forEach(s => s.update());
-
-      // 更新玩家
       player.update();
 
-      // 當方向鍵被按住或螢幕被觸控時，自動連發射擊
       if (keys.left || keys.right || touchX !== null) {
         handleAutoFire(now);
       }
 
-      // 更新玩家子彈
+      // 玩家子彈 (超寬彈幕支援擴大邊界移除範圍)
       playerBullets.forEach((b, index) => {
         b.update();
-        // 飛出螢幕上方或左右兩側時移除
-        if (b.y < -20 || b.x < -20 || b.x > width + 20) {
+        if (b.y < -20 || b.x < -100 || b.x > width + 100) {
           playerBullets.splice(index, 1);
         }
       });
 
-      // 更新敵人子彈
+      // 敵人子彈
       enemyBullets.forEach((b, index) => {
         b.update();
         if (b.y > height + 20) enemyBullets.splice(index, 1);
 
-        // 碰撞檢測：敵人子彈擊中玩家
         if (
           b.x > player.x &&
           b.x < player.x + player.width &&
@@ -581,20 +528,17 @@
           if (!player.shieldActive) {
             lives--;
             createExplosion(player.x + 20, player.y + 20, '#ff0000', 25);
-            if (lives <= 0) {
-              gameOver();
-            }
+            if (lives <= 0) gameOver();
           } else {
-            createExplosion(b.x, b.y, '#00ffff', 5); // 護盾抵擋特效
+            createExplosion(b.x, b.y, '#00ffff', 5);
           }
         }
       });
 
-      // 更新敵人與碰撞檢測
+      // 敵人與子彈碰撞
       enemies.forEach((enemy, eIndex) => {
         enemy.update(now);
 
-        // 玩家子彈擊中敵人
         playerBullets.forEach((b, bIndex) => {
           if (
             b.x > enemy.x &&
@@ -604,19 +548,19 @@
           ) {
             playerBullets.splice(bIndex, 1);
             enemy.hp--;
-
-            // 子彈撞擊火花
             createExplosion(b.x, b.y, '#ffff00', 4);
 
             if (enemy.hp <= 0) {
               createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff6600', 20);
-              
-              // 【修改】掉落物生成判定：8% 護盾、14% 武器強化道具
+
+              // 掉落機率稍微提高，方便快速體驗無限加排！
               const rand = Math.random();
               if (rand < 0.08) {
                 powerups.push(new PowerUp(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 'SHIELD'));
               } else if (rand < 0.22) {
-                powerups.push(new PowerUp(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 'WEAPON'));
+                powerups.push(new PowerUp(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 'WEAPON_SPREAD'));
+              } else if (rand < 0.38) {
+                powerups.push(new PowerUp(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 'WEAPON_WIDE'));
               }
 
               score += enemy.type === 'BOSS' ? 500 : (enemy.type === 'RED' ? 100 : 50);
@@ -625,7 +569,6 @@
           }
         });
 
-        // 敵人撞擊玩家
         if (
           enemy.x < player.x + player.width &&
           enemy.x + enemy.width > player.x &&
@@ -641,39 +584,47 @@
         }
       });
 
-      // 【修改】更新與拾取道具判定
+      // 【撿拾道具】：無限加寬核心判定
       powerups.forEach((p, index) => {
         p.update();
         if (p.y > height + 30) powerups.splice(index, 1);
 
-        // 玩家接觸到道具
         if (
           Math.abs(p.x - (player.x + player.width / 2)) < 30 &&
           Math.abs(p.y - (player.y + player.height / 2)) < 30
         ) {
           if (p.type === 'SHIELD') {
-            // 獲得防護罩
             player.shieldActive = true;
-            player.shieldTimer = 300; // 防護罩持續約 5 秒
-          } else if (p.type === 'WEAPON') {
-            // 【新增】升級子彈，擴大射擊範圍（最高 3 級）
-            if (player.weaponLevel < 3) {
-              player.weaponLevel++;
+            player.shieldTimer = 300;
+            createExplosion(player.x + 20, player.y + 20, '#00ffff', 10);
+          } 
+          else if (p.type === 'WEAPON_SPREAD') {
+            if (player.weaponType === 'SPREAD') {
+              if (player.spreadLevel < 3) player.spreadLevel++;
+            } else {
+              player.weaponType = 'SPREAD';
             }
-            // 拾取閃電特效
-            createExplosion(player.x + 20, player.y + 20, '#00ffff', 12);
+            createExplosion(player.x + 20, player.y + 20, '#ffff00', 12);
+          } 
+          // 吃到 🔷：如果已經是加寬型，排數直接 +2，永無上限！
+          else if (p.type === 'WEAPON_WIDE') {
+            if (player.weaponType === 'WIDE') {
+              player.wideRows += 2; // 2 -> 4 -> 6 -> 8 -> 10 -> 12...
+            } else {
+              player.weaponType = 'WIDE';
+            }
+            createExplosion(player.x + 20, player.y + 20, '#00e5ff', 15);
           }
+
           powerups.splice(index, 1);
         }
       });
 
-      // 更新粒子特效
       particles.forEach((p, index) => {
         p.update();
         if (p.alpha <= 0) particles.splice(index, 1);
       });
 
-      // 檢查是否消滅當前波次所有敵人
       if (enemies.length === 0) {
         wave++;
         createWave(wave);
@@ -681,60 +632,53 @@
     }
 
     function render() {
-      // 清空畫布 (黑色深空)
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, width, height);
 
-      // 繪製背景星空
       stars.forEach(s => s.draw());
 
       if (gameState === 'PLAYING') {
-        // 繪製遊戲物件
         player.draw();
         enemies.forEach(e => e.draw());
         playerBullets.forEach(b => b.draw());
         enemyBullets.forEach(b => b.draw());
         powerups.forEach(p => p.draw());
         particles.forEach(p => p.draw());
-
-        // 繪製抬頭顯示器 (HUD)
         renderHUD();
       }
     }
 
-    // 繪製霓虹風格 HUD (得分、波次、武器等級與生命值)
     function renderHUD() {
       ctx.save();
       ctx.font = 'bold 18px "Courier New", monospace';
       
-      // 得分與當前武器等級 (左上角)
       ctx.fillStyle = '#00ffff';
       ctx.fillText(`SCORE: ${score}`, 20, 35);
-      
-      // 【新增】顯示當前子彈射擊等級提示
-      ctx.font = '14px "Courier New", monospace';
-      ctx.fillStyle = '#ffcc00';
-      ctx.fillText(`WEAPON: LV.${player.weaponLevel}`, 20, 58);
 
-      // 波次 (中間頂部)
+      ctx.font = '14px "Courier New", monospace';
+      if (player.weaponType === 'SPREAD') {
+        ctx.fillStyle = '#ffff00';
+        ctx.fillText(`WEAPON: [⚡ SPREAD 扇型] LV.${player.spreadLevel}`, 20, 58);
+      } else {
+        ctx.fillStyle = '#00e5ff';
+        // 即時動態顯示當前排數
+        ctx.fillText(`WEAPON: [🔷 WIDE 加寛] 💥 ${player.wideRows} 排密集光束`, 20, 58);
+      }
+
       ctx.font = 'bold 18px "Courier New", monospace';
       ctx.fillStyle = '#ffff00';
       ctx.textAlign = 'center';
       ctx.fillText(`WAVE ${wave}`, width / 2, 35);
 
-      // 生命值 (右上角，以 ❤️ 呈現)
       ctx.textAlign = 'right';
       ctx.fillStyle = '#ff0055';
       let livesText = '';
-      for (let i = 0; i < lives; i++) {
-        livesText += CONFIG.EMOJIS.LIVES_ICON;
-      }
+      for (let i = 0; i < lives; i++) livesText += CONFIG.EMOJIS.LIVES_ICON;
       ctx.fillText(livesText, width - 20, 35);
 
       ctx.restore();
     }
 
-    // 主循環
     function loop(now) {
       update(now);
       render();
@@ -744,60 +688,37 @@
     function gameOver() {
       gameState = 'GAMEOVER';
       overlayTitle.innerText = 'GAME OVER';
-      overlayDesc.innerHTML = `最終得分: <b style="color:#ffff00">${score}</b><br>挑戰關卡: 第 ${wave} 波`;
+      overlayDesc.innerHTML = `最終得分: <b style="color:#ffff00">${score}</b><br>挑戰關卡: 第 ${wave} 波<br>最高加寬: <b style="color:#00e5ff">${player.wideRows} 排子彈</b>`;
       startBtn.innerText = '再次挑戰';
       overlay.style.display = 'flex';
     }
 
-    // =========================================================================
-    // 控制事件監聽 (鍵盤、滑鼠與觸控)
-    // =========================================================================
-
-    // 鍵盤按下事件：按住左右鍵時自動開啟發射
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-        keys.left = true;
-      }
-      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-        keys.right = true;
-      }
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
     });
 
-    // 鍵盤放開事件
     window.addEventListener('keyup', (e) => {
-      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
-        keys.left = false;
-      }
-      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-        keys.right = false;
-      }
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
     });
 
-    // 手機觸控 / 滑鼠拖曳控制
     window.addEventListener('touchstart', (e) => {
-      if (gameState === 'PLAYING') {
-        touchX = e.touches[0].clientX;
-      }
+      if (gameState === 'PLAYING') touchX = e.touches[0].clientX;
     });
 
     window.addEventListener('touchmove', (e) => {
-      if (gameState === 'PLAYING') {
-        touchX = e.touches[0].clientX;
-      }
+      if (gameState === 'PLAYING') touchX = e.touches[0].clientX;
     });
 
-    window.addEventListener('touchend', () => {
-      touchX = null;
-    });
+    window.addEventListener('touchend', () => { touchX = null; });
 
-    // 開始按鈕點擊
     startBtn.addEventListener('click', () => {
       overlay.style.display = 'none';
       initGame();
       gameState = 'PLAYING';
     });
 
-    // 啟動遊戲引擎
     resizeCanvas();
     requestAnimationFrame(loop);
   </script>
