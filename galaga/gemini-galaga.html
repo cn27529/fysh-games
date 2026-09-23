@@ -92,32 +92,33 @@
   <!-- 開始 / 遊戲結束 提示面板 -->
   <div id="overlay">
     <h1 id="overlayTitle">小蜜蜂 GALAGA</h1>
-    <p id="overlayDesc">按住 [ ← ][ → ] 或 [ A ][ D ] 移動並自動連發射擊<br>手機裝置可直接按住螢幕拖曳</p>
+    <p id="overlayDesc">按住 [ ← ][ → ] 或 [ A ][ D ] 移動並自動連發射擊<br>手機裝置可直接按住螢幕拖曳<br>吃到 ⚡ 可加寬射擊範圍！</p>
     <button id="startBtn">開始遊戲</button>
   </div>
 
   <script>
     // =========================================================================
-    // 遊戲核心參數配置區域 (CONFIG) - 可在此調整生命值、速度與 Emoji 圖示
+    // 遊戲核心參數配置區域 (CONFIG)
     // =========================================================================
     const CONFIG = {
       // 玩家與生命值設定
-      INITIAL_LIVES: 5,        // 玩家初始生命值 (可自由修改)
-      PLAYER_SPEED: 1,         // 玩家左右移動速度 (像素/幀)
-      AUTO_FIRE_RATE: 120,     // 自動發射間隔時間 (毫秒)，越小發射越快
-      BULLET_SPEED: 10,        // 玩家子彈飛向頂部的速度
+      INITIAL_LIVES: 5,        // 玩家初始生命值
+      PLAYER_SPEED: 7,         // 玩家左右移動速度 (像素/幀)
+      AUTO_FIRE_RATE: 120,     // 自動發射間隔時間 (毫秒)
+      BULLET_SPEED: 10,        // 玩家子彈基礎速度
 
       // 敵人與難度設定
       ENEMY_BASE_SPEED: 2,     // 敵人在陣型中的擺動速度
       ENEMY_DIVE_SPEED: 3.5,   // 敵人俯衝攻擊速度
       ENEMY_FIRE_CHANCE: 0.008,// 敵人每幀發射子彈的機率
 
-      // 圖示與 Emoji 設定 (可在這裡自訂 Emoji 圖示)
+      // 圖示與 Emoji 設定
       EMOJIS: {
-        BOSS: '👾',            // 大 Boss 圖示 (例如: 👾, 🛸, 👹, 🐲)
-        ENEMY_RED: '🦀',       // 紅色螃蟹外星人 (網格陣型)
-        ENEMY_GREEN: '🪲',     // 綠色甲蟲外星人 (心形陣型)
+        BOSS: '👾',            // 大 Boss 圖示
+        ENEMY_RED: '🦀',       // 紅色螃蟹外星人
+        ENEMY_GREEN: '🪲',     // 綠色甲蟲外星人
         SHIELD_ITEM: '🛡️',     // 防護罩掉落道具
+        WEAPON_ITEM: '⚡',     // 【新增】子彈升級道具圖示
         LIVES_ICON: '❤️'       // HUD 顯示的生命值圖示
       }
     };
@@ -178,7 +179,7 @@
     class Star {
       constructor() {
         this.reset();
-        this.y = Math.random() * height; // 初始隨機分散
+        this.y = Math.random() * height;
       }
       reset() {
         this.x = Math.random() * width;
@@ -208,6 +209,7 @@
         this.y = height - 70;
         this.shieldActive = false;
         this.shieldTimer = 0;
+        this.weaponLevel = 1; // 【新增】武器等級，吃到⚡會提升，最高3級
       }
 
       update() {
@@ -357,16 +359,19 @@
 
     // 子彈類別
     class Bullet {
-      constructor(x, y, speed, color, isEnemy = false) {
+      // 【修改】新增 vx 參數（預設為 0），代表水平速度，用於散彈加寬
+      constructor(x, y, speed, color, isEnemy = false, vx = 0) {
         this.x = x;
         this.y = y;
         this.speed = speed;
         this.color = color;
         this.isEnemy = isEnemy;
+        this.vx = vx; // 水平向量偏移
         this.width = 4;
         this.height = 12;
       }
       update() {
+        this.x += this.vx; // 【新增】水平位移更新
         if (this.isEnemy) {
           this.y += this.speed;
         } else {
@@ -406,11 +411,13 @@
       }
     }
 
-    // 掉落道具 (護盾)
+    // 掉落道具 (支援護盾與武器強化)
     class PowerUp {
-      constructor(x, y) {
+      // 【修改】新增 type 參數：'SHIELD' (護盾) 或 'WEAPON' (子彈強化)
+      constructor(x, y, type = 'SHIELD') {
         this.x = x;
         this.y = y;
+        this.type = type;
         this.speed = 2;
         this.size = 24;
       }
@@ -421,7 +428,9 @@
         ctx.font = '22px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(CONFIG.EMOJIS.SHIELD_ITEM, this.x, this.y);
+        // 依據道具類型繪製不同的 Emoji
+        const icon = this.type === 'WEAPON' ? CONFIG.EMOJIS.WEAPON_ITEM : CONFIG.EMOJIS.SHIELD_ITEM;
+        ctx.fillText(icon, this.x, this.y);
       }
     }
 
@@ -439,7 +448,7 @@
         return;
       }
 
-      // 波次 1, 4, 7... 心形陣型 (同截圖一)
+      // 波次 1, 4, 7... 心形陣型
       if (waveNum % 3 === 1) {
         const heartCoords = [
           { r: 0, c: 0 },
@@ -455,7 +464,7 @@
           enemies.push(new Enemy(x, y, 'GREEN'));
         });
       } 
-      // 波次 2, 5, 8... 經典網格陣型 (同截圖二)
+      // 波次 2, 5, 8... 經典網格陣型
       else {
         const rows = 5;
         const cols = 7;
@@ -481,12 +490,31 @@
       }
     }
 
-    // 自動發射子彈邏輯 (當按住方向鍵或觸控時)
+    // 【修改】自動發射子彈邏輯：依武器等級加寬射擊範圍
     function handleAutoFire(now) {
       if (now - lastShootTime > CONFIG.AUTO_FIRE_RATE) {
-        // 發射雙發子彈
-        playerBullets.push(new Bullet(player.x + 8, player.y, CONFIG.BULLET_SPEED, '#ff0033'));
-        playerBullets.push(new Bullet(player.x + player.width - 8, player.y, CONFIG.BULLET_SPEED, '#ff0033'));
+        const spd = CONFIG.BULLET_SPEED;
+
+        if (player.weaponLevel === 1) {
+          // 等級 1：原版雙發平行直線子彈 (紅色)
+          playerBullets.push(new Bullet(player.x + 8, player.y, spd, '#ff0033'));
+          playerBullets.push(new Bullet(player.x + player.width - 8, player.y, spd, '#ff0033'));
+        } 
+        else if (player.weaponLevel === 2) {
+          // 等級 2：三向扇形射擊 (青色)，包含中間直線與兩側微斜
+          playerBullets.push(new Bullet(player.x + player.width / 2, player.y, spd, '#00ffff', false, 0));
+          playerBullets.push(new Bullet(player.x + 6, player.y, spd, '#00ffff', false, -2));
+          playerBullets.push(new Bullet(player.x + player.width - 6, player.y, spd, '#00ffff', false, 2));
+        } 
+        else if (player.weaponLevel >= 3) {
+          // 等級 3：五向大廣角加寬扇形射擊 (金色)，涵蓋大範圍前方視野
+          playerBullets.push(new Bullet(player.x + player.width / 2, player.y, spd, '#ffcc00', false, 0));
+          playerBullets.push(new Bullet(player.x + 8, player.y, spd, '#ffcc00', false, -1.8));
+          playerBullets.push(new Bullet(player.x + player.width - 8, player.y, spd, '#ffcc00', false, 1.8));
+          playerBullets.push(new Bullet(player.x, player.y, spd, '#ffcc00', false, -3.8));
+          playerBullets.push(new Bullet(player.x + player.width, player.y, spd, '#ffcc00', false, 3.8));
+        }
+
         lastShootTime = now;
       }
     }
@@ -531,7 +559,10 @@
       // 更新玩家子彈
       playerBullets.forEach((b, index) => {
         b.update();
-        if (b.y < -20) playerBullets.splice(index, 1);
+        // 飛出螢幕上方或左右兩側時移除
+        if (b.y < -20 || b.x < -20 || b.x > width + 20) {
+          playerBullets.splice(index, 1);
+        }
       });
 
       // 更新敵人子彈
@@ -580,9 +611,12 @@
             if (enemy.hp <= 0) {
               createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff6600', 20);
               
-              // 隨機掉落防護罩道具 (10% 機率)
-              if (Math.random() < 0.1) {
-                powerups.push(new PowerUp(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2));
+              // 【修改】掉落物生成判定：8% 護盾、14% 武器強化道具
+              const rand = Math.random();
+              if (rand < 0.08) {
+                powerups.push(new PowerUp(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 'SHIELD'));
+              } else if (rand < 0.22) {
+                powerups.push(new PowerUp(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 'WEAPON'));
               }
 
               score += enemy.type === 'BOSS' ? 500 : (enemy.type === 'RED' ? 100 : 50);
@@ -607,18 +641,29 @@
         }
       });
 
-      // 更新與撿取防護罩道具
+      // 【修改】更新與拾取道具判定
       powerups.forEach((p, index) => {
         p.update();
         if (p.y > height + 30) powerups.splice(index, 1);
 
+        // 玩家接觸到道具
         if (
           Math.abs(p.x - (player.x + player.width / 2)) < 30 &&
           Math.abs(p.y - (player.y + player.height / 2)) < 30
         ) {
+          if (p.type === 'SHIELD') {
+            // 獲得防護罩
+            player.shieldActive = true;
+            player.shieldTimer = 300; // 防護罩持續約 5 秒
+          } else if (p.type === 'WEAPON') {
+            // 【新增】升級子彈，擴大射擊範圍（最高 3 級）
+            if (player.weaponLevel < 3) {
+              player.weaponLevel++;
+            }
+            // 拾取閃電特效
+            createExplosion(player.x + 20, player.y + 20, '#00ffff', 12);
+          }
           powerups.splice(index, 1);
-          player.shieldActive = true;
-          player.shieldTimer = 300; // 防護罩持續約 5 秒
         }
       });
 
@@ -657,16 +702,22 @@
       }
     }
 
-    // 繪製霓虹風格 HUD (得分、波次與生命值)
+    // 繪製霓虹風格 HUD (得分、波次、武器等級與生命值)
     function renderHUD() {
       ctx.save();
       ctx.font = 'bold 18px "Courier New", monospace';
       
-      // 得分 (左上角)
+      // 得分與當前武器等級 (左上角)
       ctx.fillStyle = '#00ffff';
       ctx.fillText(`SCORE: ${score}`, 20, 35);
+      
+      // 【新增】顯示當前子彈射擊等級提示
+      ctx.font = '14px "Courier New", monospace';
+      ctx.fillStyle = '#ffcc00';
+      ctx.fillText(`WEAPON: LV.${player.weaponLevel}`, 20, 58);
 
       // 波次 (中間頂部)
+      ctx.font = 'bold 18px "Courier New", monospace';
       ctx.fillStyle = '#ffff00';
       ctx.textAlign = 'center';
       ctx.fillText(`WAVE ${wave}`, width / 2, 35);
